@@ -1,0 +1,412 @@
+---
+title: "capstone project"
+author: "Mothogoane Maleke Ali"
+date: "2023-09-08"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Installing and loading the useful packages
+```{r}
+install.packages("tidyverse")
+install.packages("lubridate")
+install.packages("janitor")
+install.packages("skimr")
+install.packages("dplyr")
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(skimr)
+```
+Importing the data for exploration(Collection of data)
+
+```{r}
+cd1 <- read.csv("./Cyclistic data/Aug22.csv")
+cd2 <- read.csv("./Cyclistic data/Sep22.csv")
+cd3 <- read.csv("./Cyclistic data/Oct22.csv")
+cd4 <- read.csv("./Cyclistic data/Nov22.csv")
+cd5 <- read.csv("./Cyclistic data/Dec22.csv")
+cd6 <- read.csv("./Cyclistic data/Jan23.csv")
+cd7 <- read.csv("./Cyclistic data/Feb23.csv")
+cd8 <- read.csv("./Cyclistic data/Mar23.csv")
+cd9 <- read.csv("./Cyclistic data/Apr23.csv")
+cd10 <- read.csv("./Cyclistic data/May23.csv")
+cd11 <- read.csv("./Cyclistic data/Jun23.csv")
+cd12 <- read.csv("./Cyclistic data/Jul23.csv")
+```
+
+Comparing the column names of each file
+```{r}
+colnames(cd1)
+colnames(cd2)
+colnames(cd3)
+colnames(cd4)
+colnames(cd5)
+colnames(cd6)
+colnames(cd7)
+colnames(cd8)
+colnames(cd9)
+colnames(cd10)
+colnames(cd11)
+colnames(cd12)
+```
+The results of the above code chunk, reveals that the files have consistent column naming therefore there is no need to rename columns.
+
+Combining the data frames into one using rbind
+```{r}
+cyclistic_data <- rbind(cd1,cd2,cd3, cd4,cd5,cd6,cd7,cd8,cd9,cd10,cd11,cd12)
+```
+
+*explore the variable types of the columns
+```{r}
+glimpse(cyclistic_data)
+str(cyclistic_data)
+```
+
+
+Handling the missing data
+```{r}
+# Check for missing values
+any(is.na(cyclistic_data))
+
+# Remove rows with missing values and rows with empty strings in any column using dplyr
+
+cyclistic_data <- na.omit(cyclistic_data)
+cyclistic_data <- drop_na(cyclistic_data)
+cyclistic_data <- cyclistic_data %>%
+  filter_all(all_vars(. != ""))
+```
+
+
+Removing the lat and Ing fields
+```{r}
+cyclistic_data <- cyclistic_data %>% 
+  select(-c(start_lat,start_lng,end_lat,end_lng))
+```
+
+Clean up and add data to prepare for analysis
+```{r}
+# Inspection of the new table created
+colnames(cyclistic_data)  #List of column names
+nrow(cyclistic_data)  #number of rowsin data frame?
+dim(cyclistic_data)  #Dimensions of the data frame
+head(cyclistic_data)  #The first 6 rows of data frame.  Also tail(qs_raw)
+str(cyclistic_data)  #See list of columns and data types (numeric, character, etc)
+skim_without_charts(cyclistic_data)
+summary(cyclistic_data)  #Statistical summary of data.
+
+```
+
+ There are a few problems we will need to fix:
+
+(1) The data can only be aggregated at the ride-level, which is too granular. We will want to add some additional columns of data -- such as day, month, year -- that provide additional opportunities to aggregate the data.
+(2) We will want to add a calculated field for length of ride since the data did not have the "tripduration" column. We will add "ride_length" to the entire dataframe for consistency.
+(3) There are some rides where tripduration shows up as negative, including several hundred rides where the company took bikes out of circulation for Quality Control reasons. We will want to delete these rides.
+
+```{r}
+# Add columns that list the date, month, day, and year of each ride
+# This will allow us to aggregate ride data for each month, day, or year ... before completing these operations we could only aggregate at the ride level
+cyclistic_data$date <- as.Date(cyclistic_data$started_at) #The default format is yyyy-mm-dd
+cyclistic_data$month <- format(as.Date(cyclistic_data$date), "%B")
+cyclistic_data$day <- format(as.Date(cyclistic_data$date), "%d")
+cyclistic_data$year <- format(as.Date(cyclistic_data$date), "%Y")
+cyclistic_data$day_of_week <- format(as.Date(cyclistic_data$date), "%A")
+
+```
+
+Adding a column that calculates the trips time taken
+
+```{r}
+# Add a "ride_length" calculation to all_trips (in seconds)
+
+cyclistic_data$ride_length <- difftime(cyclistic_data$ended_at,cyclistic_data$started_at, units = "min") 
+
+
+```
+
+converting the ride_length to 2 decimal places
+
+```{r}
+cyclistic_data$ride_length <- round(cyclistic_data$ride_length, 2)
+```
+
+```{r}
+cyclistic_data$ride_length <- as.numeric(as.character(cyclistic_data$ride_length))
+```
+
+Further removing entries that are null and returning a cleaned data
+
+```{r}
+# Check for missing values
+any(is.na(cyclistic_data))
+
+# Remove rows with missing values
+cyclistic_data_cleaned <- na.omit(cyclistic_data)
+```
+
+Filtering out the rides that are negative minutes long.
+
+```{r}
+cyclistic_data_cleaned <- filter(cyclistic_data_cleaned, ride_length>0)
+```
+
+Final review for data for analysis
+```{r}
+str(cyclistic_data_cleaned)
+```
+Analysis
+
+Descriptive analysis
+
+Number of rides by ridable type
+```{r}
+cyclistic_data_cleaned %>%
+  count(rideable_type)
+```
+
+Number of rides by type of subscription
+```{r}
+cyclistic_data_cleaned %>% 
+  count(member_casual)
+```
+Number of rides of rideable type grouped by subscription type
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(member_casual)%>%
+  count (rideable_type)
+```
+From the analysis above the member subscription does not offer docked bike option
+
+Computing the avarage ride 
+```{r}
+cyclistic_data_cleaned %>%
+  group_by (member_casual) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))  
+  
+```
+From the analysis above casual ride higher average ride length than the members, however there are more members than casual customers
+
+
+```{r}
+cyclistic_data_cleaned%>%
+  group_by(member_casual)%>%
+  summarise(number_of_rides=n(), min_ride_length=min(ride_length),max_ride_length=max(ride_length),avg_ride_length=mean(ride_length),median_ride_length=median(ride_length))
+```
+
+```{r}
+cyclistic_data_cleaned$month <- ordered(cyclistic_data_cleaned$month, levels=c("August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"))
+
+cyclistic_data_cleaned$day_of_week <- ordered(cyclistic_data_cleaned$day_of_week, levels=c( "Monday", "Tuesday", "Wednesday", "Thursday","Friday", "Saturday", "Sunday"))
+
+
+```
+
+
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(member_casual,day_of_week) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  arrange (day_of_week)
+```
+
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(member_casual,month) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  arrange (month)
+```
+
+Arranging the popularity of the start stations if a customer is casual
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(start_station_name, member_casual) %>%
+  summarise(number_of_trips=n()) %>%
+  arrange(desc (number_of_trips)) %>%
+  filter(member_casual== "casual") %>% 
+  select(start_station_name,number_of_trips)
+```
+From the analysis above the most popular start station is Streeter Dr & Grand Ave
+
+Arranging the popularity of the end stations if a customer is casual
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(end_station_name, member_casual) %>%
+  summarise(number_of_trips=n()) %>%
+  arrange(desc (number_of_trips)) %>%
+  filter(member_casual== "casual") %>% 
+  select(end_station_name,number_of_trips)
+```
+From the analysis above the most popular end station is Streeter Dr & Grand Ave
+
+Arranging the popularity of the start stations if a customer is member
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(start_station_name, member_casual) %>%
+  summarise(number_of_trips=n()) %>%
+  arrange(desc (number_of_trips)) %>%
+  filter(member_casual== "member") %>% 
+  select(start_station_name,number_of_trips)
+```
+
+
+
+Arranging the popularity of the end stations if a customer is member
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(end_station_name, member_casual) %>%
+  summarise(number_of_trips=n()) %>%
+  arrange(desc (number_of_trips)) %>%
+  filter(member_casual== "member") %>% 
+  select(end_station_name,number_of_trips)
+```
+The start and end station data for member is the same, meaning the members starts their ride and return the bike at the same station
+
+
+
+```{r}
+cyclistic_data_analysed <-unite(cyclistic_data_cleaned, "trip", start_station_name, end_station_name, sep= " to ")
+```
+
+```{r}
+head(cyclistic_data_analysed)
+```
+
+Popular trips taken
+```{r}
+popular_trips <- cyclistic_data_analysed %>%
+  group_by(trip) %>%
+  summarise(number_of_rides=n()) %>%
+  arrange (desc (number_of_rides))
+```
+
+Displaying top 10 popular trips
+```{r}
+head (popular_trips,10)
+```
+
+popular trips grouped by type of customer
+```{r}
+popular_trips_1 <- cyclistic_data_analysed %>%
+  group_by(trip, member_casual) %>%
+  summarise(number_of_rides=n()) %>%
+  arrange (desc(number_of_rides)) 
+```
+Top 10 trips grouped by type of customer
+```{r}
+head(popular_trips_1, 10)
+```
+
+Visualization 
+
+
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(member_casual) %>%
+  summarise(Average_ride_length=mean(ride_length)) %>%
+  ggplot(aes(x= member_casual, y=Average_ride_length, fill=member_casual)) + geom_col() + labs(title = "       Average ride length by rider type", x="Rider type", y="Average ride length (min)")
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(member_casual, month) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  ggplot (aes(x=month, y=number_of_rides, fill=member_casual)) + geom_col(position= "dodge2") + labs(title = "Number of rides per month segmented by rider type", x= "Month", y="Number of rides")+ theme(axis.text.x = element_text(angle = 60, hjust=1))
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(member_casual, month) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  ggplot (aes(x=month, y=average_ride_length, fill=member_casual)) + geom_col(position= "dodge2") + labs(title = "Average ride length per month segmented by rider type", x= "Month", y="Average ride length(min)")+ theme(axis.text.x = element_text(angle = 60, hjust=1))
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(member_casual, day_of_week) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  ggplot (aes(x=day_of_week, y=number_of_rides, fill=member_casual)) + geom_col(position= "dodge2") + labs(title = "Number of rides per day of the week", x= "Day of the week", y="Number of rides")
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(member_casual, day_of_week) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  ggplot (aes(x=day_of_week, y=average_ride_length, fill=member_casual)) + geom_col(position= "dodge2") + labs(title = "Average ride length per week day segmented by rider type", x= "Day of the week", y="Average ride length(min)")+ theme(axis.text.x = element_text(angle = 60, hjust=1))
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(rideable_type, member_casual) %>%
+  summarise(number_of_rides=n()) %>%
+  ggplot(aes(x=rideable_type, y=number_of_rides, fill=member_casual)) + geom_col(position = "dodge") + labs(title="Number of rides per rideable type" , x="Rideable Type", y="Number of rides")
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(rideable_type, member_casual) %>%
+  summarise(Average_ride_length = mean(ride_length)) %>%
+  ggplot(aes(x=rideable_type, y=Average_ride_length, fill=member_casual)) + geom_col(position = "dodge") + labs(title="Average ride length per rideable type" , x="Rideable Type", y="Average ride length(min)")
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(member_casual, month, rideable_type) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  ggplot (aes(x=month, y=number_of_rides, fill=rideable_type)) + geom_col(position="dodge2") + facet_wrap(~member_casual) + labs(title = "Number of rides segmented by rideable types for each month", x="Month", y="Number of rides") + theme(axis.text.x = element_text(angle = 60, hjust=1))
+```
+
+```{r}
+cyclistic_data_analysed %>%
+  group_by(member_casual, day_of_week, rideable_type) %>%
+  summarise(number_of_rides=n(), average_ride_length=mean(ride_length))%>%
+  ggplot (aes(x=day_of_week, y=number_of_rides, fill=rideable_type)) + geom_col(position = "dodge") + facet_wrap(~member_casual) + labs(title = "Number of rides segmented by rideable types for each day of the week", x="Day of the week", y="Number of rides") + theme(axis.text.x = element_text(angle = 60, hjust=1))
+```
+
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(start_station_name, member_casual) %>%
+  summarise(number_of_trips=n()) %>%
+  arrange(desc (number_of_trips)) %>%
+  filter(member_casual== "casual", number_of_trips >= 11200) %>%
+  select(start_station_name, number_of_trips) %>%
+  ggplot(aes(x=start_station_name, y=number_of_trips)) + geom_col(fill="RED") + coord_flip() + labs(title="Top 10 most popular start stations for casual riders", x="Start station name", y="Number of trips")
+```
+
+```{r}
+cyclistic_data_cleaned %>%
+  group_by(end_station_name, member_casual) %>%
+  summarise(number_of_trips=n()) %>%
+  arrange(desc (number_of_trips)) %>%
+  filter(member_casual== "casual", number_of_trips >= 11500) %>%
+  select(end_station_name, number_of_trips) %>%
+  ggplot(aes(x=end_station_name, y=number_of_trips)) + geom_col(fill="green") + coord_flip() + labs(title="Top 10 most popular end stations for casual riders", x="End station name", y="Number of trips")
+```
+
+```{r}
+popular_trips %>%
+  filter(number_of_rides >= 4340) %>% 
+  ggplot(aes(x=trip, y=number_of_rides)) + geom_col(fill="blue") + coord_flip() + labs(title="Top 10 most popular trips",y="Number of trips")
+
+ 
+```
+
+Exporting tables for further analysis using Tableau
+
+```{r}
+write.csv(cyclistic_data_analysed, "cyclistic_data_analysed.csv", row.names = FALSE)
+write.csv(popular_trips, "popular_trips.csv",row.names = FALSE)
+write.csv(popular_trips_1, "popular_trips_by_subscription.csv", row.names = FALSE)
+```
+
+
+
+
+
+
+
