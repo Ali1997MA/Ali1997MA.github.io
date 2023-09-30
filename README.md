@@ -13,6 +13,10 @@ So far, *Cyclistic’s* marketing approach relies on building general awareness 
 The financial analysts at *Cyclistic* have determined that annual members are significantly more profitable than casual riders. According to Moreno, director of marketing and my manager, increasing the number of annual members will be crucial to *Cyclistic’s* future growth even though the pricing flexibility help the company gain more customers.  Moreno believes that there is a very chance in converting casual riders into annual members. In order to guide the marketing team with the task of converting the casual riders into members, Moreno has assigned me to answer the following questions: **How do annual members and casual riders use Cyclistic bikes differently?**
 
 ## Prepare phase
+To address the question above I will analyze the [*Cyclistic’s* historic data](https://divvy-tripdata.s3.amazonaws.com/index.html). (Note the datasets are based on a fictional company, Cyclistic, however the data has been made available by Motivate International Inc. under this [license](https://divvybikes.com/data-license-agreement).) This is a public data that is reliable for exploration because riders personal information has been made unidentifiable to avoid data-privacy issues.
+
+I began by downloading 12 months of [*Cyclistic’s* historic data](https://divvy-tripdata.s3.amazonaws.com/index.html) and saved then into my local drive as csv files. Each file contains 1 month of riders trip data. I downloaded the most recent annual data which was at the time of starting my project, this is from August 2022 to July 2023. The files were then imported RStudio for exploration.
+
 
 
 
